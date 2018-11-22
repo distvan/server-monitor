@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <!-- <meta http-equiv="Content-Security-Policy" content="connect-src 'self'"> -->
+        <title>Live Server Monitoring</title>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+            const Monitoring = function(){
+                var socket = null;
+                var loadData = [];
+                this.start = function(){
+                    console.log('start');
+                    var ip = document.getElementById('ipAddress').value;
+                    var port = document.getElementById('portNumber').value;
+                    socket = new WebSocket('ws://' + ip + ':' + port);
+                    var that = this;
+                    socket.onmessage = function(e) {
+                        var json = JSON.parse(e.data);
+                        var item = [
+                            [parseInt(json.when.hour), parseInt(json.when.min), parseInt(json.when.sec)],
+                            json.load
+                        ];
+                        loadData.push(item);
+                        that.drawCurveTypes();
+                    };
+                }
+                this.stop = function(){
+                    console.log('stop');
+                    socket.close();
+                }
+                this.clear = function(){
+                    console.log('clear');
+                    loadData = [];
+                    this.drawCurveTypes();
+                }
+                this.drawCurveTypes = function() {
+                    var ldata = new google.visualization.DataTable();
+                    ldata.addColumn('timeofday', 'X');
+                    ldata.addColumn('number', 'Load');
+                    ldata.addRows(loadData);
+
+                    var options = {
+                        hAxis: {
+                            title: 'Time'
+                        },
+                        vAxis: {
+                            title: 'Server Load'
+                        },
+                        series: {
+                            1: {curveType: 'function'}
+                        }
+                    };
+
+                    var chart = new google.visualization.LineChart(document.getElementById('load_chart_div'));
+                    chart.draw(ldata, options);
+                }
+            }
+
+            var monitor = new Monitoring();
+            google.charts.load('current', {packages: ['corechart', 'line']});
+            google.charts.setOnLoadCallback(monitor.drawCurveTypes);
+        </script>
+    </head>
+    <body>
+        IpAddress: <input id="ipAddress" type="text" value="127.0.0.1" size="10" />
+        PortNumber: <input id="portNumber" type="text" value="8080" size="5" />
+        Token: <input id="token" type="text" value="" />
+        <button id="startMonitorEvent" onclick="monitor.start()">Start Monitoring</button>
+        <button id="stopMonitorEvent" onclick="monitor.stop()">Stop Monitoring</button>
+        <button id="clearMonitorEvent" onclick="monitor.clear()">Clear Data</button>
+        <div id="load_chart_div"></div>
+    </body>
+</html>
