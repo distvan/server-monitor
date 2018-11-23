@@ -10,6 +10,7 @@ use mysqli;
 class SysInfo
 {
     private $_mysqli;
+    protected $_os;
 
     /**
      * SysInfo constructor.
@@ -17,6 +18,7 @@ class SysInfo
      */
     public function __construct($config)
     {
+        $this->_os = strtolower(PHP_OS);
         if(isset($config['host']) && !empty($config['host']) &&
             isset($config['user']) && !empty($config['user']) &&
             isset($config['pass']) && !empty($config['pass']) &&
@@ -48,8 +50,7 @@ class SysInfo
 
     public function getServerLoad($windows = false)
     {
-        $os=strtolower(PHP_OS);
-        if(strpos($os, 'win') === false)
+        if(strpos($this->_os, 'win') === false)
         {
             if(file_exists('/proc/loadavg'))
             {
@@ -106,4 +107,18 @@ class SysInfo
         return false;
     }
 
+    public function getNetWorkConnections($port=80)
+    {
+        $active_connections = -1;
+
+        if(strpos($this->_os, 'win') === false)
+        {
+            if(function_exists('shell_exec'))
+            {
+                $active_connections = shell_exec('netstat -an | grep :' . $port . ' | grep -v ESTABILISHED | wc -l');
+            }
+        }
+
+        return $active_connections;
+    }
 }
