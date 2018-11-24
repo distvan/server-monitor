@@ -9,8 +9,12 @@ use mysqli;
  */
 class SysInfo
 {
+    const OS_UNKNOWN = 1;
+    const OS_WIN = 2;
+    const OS_LINUX = 3;
+    const OS_OSX = 4;
+
     private $_mysqli;
-    protected $_os;
 
     /**
      * SysInfo constructor.
@@ -18,7 +22,6 @@ class SysInfo
      */
     public function __construct($config)
     {
-        $this->_os = strtolower(PHP_OS);
         if(isset($config['host']) && !empty($config['host']) &&
             isset($config['user']) && !empty($config['user']) &&
             isset($config['pass']) && !empty($config['pass']) &&
@@ -28,9 +31,36 @@ class SysInfo
         }
     }
 
+    protected function getOS()
+    {
+        switch(stristr(PHP_OS))
+        {
+            case 'DAR': return self::OS_OSX;
+            case 'WIN': return self::OS_WIN;
+            case 'LINUX': return self::OS_LINUX;
+            default : return self::OS_UNKNOWN;
+        }
+    }
+
     public function getMemoryUsage()
     {
-        return memory_get_usage(true);
+        if($this->getOS() == self::OS_LINUX)
+        {
+            if(function_exists('shell_exec'))
+            {
+                $str = shell_exec('free -m -t | grep Total');
+                $str = str_replace("Total:", "", $str);
+                $result = trim(preg_replace('/\s\s+/', ' ', str_replace("\n", " ", $str)));
+                $data = explode(' ', $result);
+                $usedMemory = isset($data[1]) && is_numeric($data[1]) ? $data[1] : 0;
+
+                return $usedMemory;
+            }
+        }
+        else
+        {
+            return memory_get_usage(true);
+        }
     }
 
     public function getMysqlInfo()
@@ -50,7 +80,7 @@ class SysInfo
 
     public function getServerLoad($windows = false)
     {
-        if(strpos($this->_os, 'win') === false)
+        if($this->getOS() == self::OS_LINUX)
         {
             if(file_exists('/proc/loadavg'))
             {
@@ -111,7 +141,7 @@ class SysInfo
     {
         $active_connections = -1;
 
-        if(strpos($this->_os, 'win') === false)
+        if($this->getOS() == self::OS_LINUX)
         {
             if(function_exists('shell_exec'))
             {
